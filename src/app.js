@@ -80,7 +80,8 @@ var Road=cc.Layer.extend({
     carRed:null,
     carBlack:null,
     spBaks:{},
-    spLines:new Array(6),
+    spLines:null,
+    spPlants:null,
     ctor:function() {
         this._super();
 
@@ -97,13 +98,37 @@ var Road=cc.Layer.extend({
         spBg2.y=960;
         this.addChild(spBg2);
 
+        //车道线
+        this.spLines=new Array(8);
         for (var i = 0; i < 8; i++) {
             var spSpiteLine=this.spLines[i] = new cc.Sprite(res.img_roadLine);
-            spSpiteLine.setScaleY(190 / 30);
             spSpiteLine.setPositionX(70+500 / 3 * (i % 2 + 1));
             spSpiteLine.setPositionY(0 + 300 * (Math.floor(i / 2) + 1));
             this.addChild(spSpiteLine);
         }
+
+        //植物
+        var count=Math.ceil(960/250)+1;
+        this.spPlants=new Array(count*2);
+        for(var i=0;i<count;i++){
+            //左边
+            var plant=new cc.Sprite(res.img_grass);
+            plant.y=-10+i*250;
+            plant.anchorY=0;
+            plant.anchorX=0;
+            this.addChild(plant,30,30+i*2);
+            this.spPlants[i*2]=plant;
+            //右边
+            var plant=new cc.Sprite(res.img_grass);
+            plant.anchorX=1;
+            plant.anchorY=0;
+            plant.flippedX=true;
+            plant.x=640;
+            plant.y=-10+i*250;
+            this.addChild(plant,30,30+i*2+1);
+            this.spPlants[i*2+1]=plant;
+        }
+
         this.scheduleUpdate();
         return true;
     },
@@ -119,12 +144,29 @@ var Road=cc.Layer.extend({
             if(this.spBaks.bg1.y+this.y<=960/2){
                 this.spBaks.bg2.y=this.spBaks.bg1.y+960;
             }
+        //车道边界线
+        for(var i=0;i<0;i++){
+            var spLine=this.spLines[i*2];
+            if(spLine.y+this.y<-180){
+                spLine.y+=300*4;
+                this.spLines[i*2+1].y=spLine.y;
+            }
+        }
         //车道线
         for(var i=0;i<4;i++){
             var spLine=this.spLines[i*2];
             if(spLine.y+this.y<-180){
                 spLine.y+=300*4;
                 this.spLines[i*2+1].y=spLine.y;
+            }
+        }
+        //植物
+        var count=this.spPlants.length/2;
+        for(var i=0;i<count;i++){
+            var spPlant=this.spPlants[i*2];
+            if(spPlant.y+this.y+260<=0){
+                spPlant.y+=250*count;
+                this.spPlants[i*2+1].y=spPlant.y;
             }
         }
     },
