@@ -1,11 +1,4 @@
-/*************************************
- *  Manager *
- *  **********************************/
-var Manager={
-    CarRed:null,
-    CarBlack:null,
-    LabDistance:null
-}
+
 /*************************************
  *  Car *
  *  **********************************/
@@ -21,15 +14,16 @@ var Car = cc.Sprite.extend({
         this.type=type;
         if(type==0){
             this._super(res.img_carBlack);
-            this.setPositionX(500/3*2);
+            this.x=320;
         }
         else{
             this._super(res.img_carRed);
-            this.setPositionX(500/3);
+            this.x=320-170;
         }
         if(_maxspeed!=null && _maxspeed!=undefined){
             this.maxSpeed=_maxspeed;
         }
+        this.y=400;
 
         this.attr({
             anchorX:0.5,
@@ -59,9 +53,9 @@ var Car = cc.Sprite.extend({
         },0.1);
     },
     update:function(dt) {
-       if(this.speed>=0){
-           this.setPositionY(this.getPositionY()+this.speed);
-       }
+        if(this.speed>=0){
+            this.y+=this.speed;
+        }
     },
     Refuel:function(){
         //加油
@@ -70,6 +64,10 @@ var Car = cc.Sprite.extend({
     Brake:function(){
         //刹车
         this.state=3;
+    },
+    //是否在运行
+    isRun:function(){
+        return this.speed>0;
     }
 });
 
@@ -102,8 +100,8 @@ var Road=cc.Layer.extend({
         this.spLines=new Array(8);
         for (var i = 0; i < 8; i++) {
             var spSpiteLine=this.spLines[i] = new cc.Sprite(res.img_roadLine);
-            spSpiteLine.setPositionX(70+500 / 3 * (i % 2 + 1));
-            spSpiteLine.setPositionY(0 + 300 * (Math.floor(i / 2) + 1));
+            spSpiteLine.x=i % 2==0?230:(640-230);
+            spSpiteLine.y=0 + 300 * (Math.floor(i / 2) + 1);
             this.addChild(spSpiteLine);
         }
 
@@ -134,16 +132,16 @@ var Road=cc.Layer.extend({
     },
     onEnter:function(){
         this._super();
-        this.runAction(cc.follow(Manager.CarBlack));
+        this.runAction(cc.follow(this.carBlack));
     },
     update:function(dt){
         //背景
-            if(this.spBaks.bg2.y+this.y<=960/2){
-                this.spBaks.bg1.y=this.spBaks.bg2.y+960;
-            }
-            if(this.spBaks.bg1.y+this.y<=960/2){
-                this.spBaks.bg2.y=this.spBaks.bg1.y+960;
-            }
+        if(this.spBaks.bg2.y+this.y<=960/2){
+            this.spBaks.bg1.y=this.spBaks.bg2.y+960;
+        }
+        if(this.spBaks.bg1.y+this.y<=960/2){
+            this.spBaks.bg2.y=this.spBaks.bg1.y+960;
+        }
         //车道边界线
         for(var i=0;i<0;i++){
             var spLine=this.spLines[i*2];
@@ -188,6 +186,7 @@ var Road=cc.Layer.extend({
 var MainScene = cc.Scene.extend({
     labDistence:null,
     road:null,
+    touchStartPosi:null,
     ctor:function(){
         this._super();
 
@@ -196,8 +195,6 @@ var MainScene = cc.Scene.extend({
         var carRed=new Car(1);
         var carBlack=new Car(0,13);
         this.road.setCars(carRed,carBlack);
-        Manager.CarBlack=carBlack;
-        Manager.CarRed=carRed;
 
         this.addChild(this.road);
 
@@ -218,31 +215,26 @@ var MainScene = cc.Scene.extend({
             cc.eventManager.addListener({
                 event: cc.EventListener.MOUSE,
                 onMouseDown: function (event) {
-                    if(Manager.LabDistance==null){
-                        alert("labDistence is null");
-                    }
-                    Manager.LabDistance.color = cc.color._getGreen();
+                    var target = event.getCurrentTarget();
+                    target.labDistence.color= cc.color._getGreen();
+                    //加油门
+                    target.road.carBlack.Refuel();
 
-                    /*var winSize = cc.director.getWinSize();
-                    var pos = touch.getLocation();
-                    if(this.carBlack==null){
-                        alert("carBlack is null");
-                    }*/
-                    Manager.CarBlack.Refuel();
+                    target.touchStartPosi=event.getLocation();
                 },
                 onMouseMove: function (event) {
-                    /*var pos = event.getLocation(), target = event.getCurrentTarget();
-                    cc.log("onMouseMove at: " + pos.x + " " + pos.y);
-                    target.sprite.x = pos.x;
-                    target.sprite.y = pos.y;*/
+                    var target = event.getCurrentTarget();
+                    if(target.road.carBlack.isRun() && target.touchStartPosi!=null){
+                        var newPosi=event.getLocation();
+                        var offsetX=newPosi.y-target.touchStartPosi.y;
+                        target.road.carBlack.x+=offsetX*0.1;
+                    }
                 },
                 onMouseUp: function (event) {
-                    /*var pos = event.getLocation(), target = event.getCurrentTarget();
-                    target.sprite.x = pos.x;
-                    target.sprite.y = pos.y;
-                    cc.log("onMouseUp at: " + pos.x + " " + pos.y);*/
-                    Manager.CarBlack.Brake();
-                    Manager.LabDistance.color = cc.color._getRed();
+                    var target = event.getCurrentTarget();
+                    target.road.carBlack.Brake();
+                    target.touchStartPosi=null;
+                    target.labDistence.color = cc.color._getRed();
                 }
             }, this);
         } else {
@@ -252,7 +244,7 @@ var MainScene = cc.Scene.extend({
     },
     _initGUI:function(){
         var winSize=cc.director.getWinSize();
-        Manager.LabDistance=this.labDistence= new cc.LabelTTF("Dictance:0", "Times New Roman", 30);
+        this.labDistence= new cc.LabelTTF("Dictance:0", "Times New Roman", 30);
         this.labDistence.color=cc.color._getRed();
         this.labDistence.x = winSize.width / 2;
         this.labDistence.y = winSize.height - 50;
